@@ -1,0 +1,138 @@
+test> width.tests.narrow = test.verify do
+  input = [[], [], []]
+  ensureEqual (width input) 0
+
+
+test> width.tests.empty = test.verify do
+  input = []
+  ensureEqual (width input) 0
+
+test> width.tests.simple = test.verify do
+  input = [[1, 2], [3, 4], [5, 6]]
+  ensureEqual (width input) 2
+
+
+test> sparseCount.tests = test.verify do
+  ensureEqual (sparseCount (linesToRolls ["@@@", "@@@", "@@@"])) 4
+  ensureEqual (sparseCount (linesToRolls ["@.@", "@.@", "@.@"])) 6
+
+
+test> removeAllRolls.tests.stuck = test.verify do
+  input = linesToRolls [".@@.", "@@@@", "@@@@", ".@@."]
+  ensureEqual (removeAllRolls input 0) 0
+
+
+test> isSparse.tests = test.verify do
+  full = linesToRolls ["@@@", "@@@", "@@@"]
+  ensureEqual (isSparse full (0, 0)) (Some true)
+
+
+test> isRollAtPos.tests = test.verify do
+  ensureEqual (isRollAtPos (linesToRolls ["@@", "@@"]) (1, 1)) true
+  ensureEqual (isRollAtPos (linesToRolls ["@@", "@."]) (1, 1)) false
+
+
+test> getPos.tests = test.verify do
+  ensureEqual (getPos (5, 5) (-1, +1)) (Some (4, 6))
+  ensureEqual (getPos (5, 5) (+1, +0)) (Some (6, 5))
+  ensureEqual (getPos (0, 1) (-1, -1)) None
+  ensureEqual (getPos (1, 0) (+1, -1)) None
+
+
+getPos : (Nat, Nat) -> (Int, Int) -> Optional (Nat, Nat)
+getPos p dp =
+  use Int + >=
+  use Nat toInt
+  px = toInt (at1 p) + at1 dp
+  py = toInt (at2 p) + at2 dp
+  if px >= +0 && py >= +0 then Some (truncate0 px, truncate0 py) else None
+
+
+width : [[a]] -> Nat
+width nestedList =
+  firstList = List.at 0 nestedList |> Optional.getOrElse []
+  List.size firstList
+
+
+getSparseness : [[Boolean]] -> [Optional Boolean]
+getSparseness lines =
+  use List size
+  use Nat range
+  List.crossJoin
+    (range 0 (size lines))
+    (range 0 (size (List.at 0 lines |> Optional.getOrElse [])))
+    |> List.map (isSparse lines)
+
+isRollAtPos : [[Boolean]] -> (Nat, Nat) -> Boolean
+isRollAtPos lines p =
+  use List at
+  use Optional getOrElse
+  at (at1 p) lines |> getOrElse [] |> at (at2 p) |> getOrElse false
+
+isSparse : [[Boolean]] -> (Nat, Nat) -> Optional Boolean
+isSparse lines pos =
+  use Int != rangeClosed
+  use List filter
+  use Nat >
+  if isRollAtPos lines pos then
+    Some
+      (List.crossJoin (rangeClosed -1 +1) (rangeClosed -1 +1)
+        |> filter (t -> at1 t != +0 || at2 t != +0)
+        |> List.map
+             (getPos pos
+               >> Optional.map (isRollAtPos lines)
+               >> Optional.getOrElse false)
+        |> filter id
+        |> List.size
+        |> (>) 4)
+  else None
+
+sparseCount : [[Boolean]] -> Nat
+sparseCount lines =
+  lines
+    |> getSparseness
+    |> List.map (Optional.getOrElse false)
+    |> List.filter id
+    |> List.size
+
+
+removeAllRolls : [[Boolean]] -> Nat -> Nat
+removeAllRolls rolls total =
+  use Nat + ==
+  sparseness = getSparseness rolls
+  removedRollsCount =
+    sparseness |> List.filterMap (Optional.filter id) |> List.size
+  remainingRolls =
+    sparseness
+      |> List.map (Optional.map Boolean.not >> Optional.getOrElse false)
+  newRolls = List.chunk (width rolls) remainingRolls
+  if Debug.tap "removed" removedRollsCount == 0 then total
+  else removeAllRolls newRolls (total + removedRollsCount)
+
+
+linesToRolls : [Text] -> [[Boolean]]
+linesToRolls lines =
+  use Char ==
+  use List map
+  chars = map toCharList lines
+  rolls = chars |> map (map ((==) ?@))
+  rolls
+
+
+solve2 : '{IO, Exception} Nat
+solve2 = do
+  input = readFileUtf8 (FilePath "input.txt")
+  lines = Text.split ?\n input
+  rolls = linesToRolls lines
+  totalRemoved = removeAllRolls rolls 0
+  totalRemoved
+
+
+solve1 : '{IO, Exception} Nat
+solve1 = do
+  use Char ==
+  use List map
+  input = readFileUtf8 (FilePath "input.txt")
+  lines = Text.split ?\n input
+  rolls = linesToRolls lines
+  sparseCount rolls

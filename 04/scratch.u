@@ -74,18 +74,13 @@ isSparse lines pos =
   use Int != rangeClosed
   use List filter
   use Nat >
-  if isRollAtPos lines pos then
-    Some
-      (List.crossJoin (rangeClosed -1 +1) (rangeClosed -1 +1)
-        |> filter (t -> at1 t != +0 || at2 t != +0)
-        |> List.map
-             (getPos pos
-               >> Optional.map (isRollAtPos lines)
-               >> Optional.getOrElse false)
-        |> filter id
-        |> List.size
-        |> (>) 4)
-  else None
+  toOptional! do
+  	abortWhen (not ( isRollAtPos lines pos ))
+	List.crossJoin (rangeClosed -1 +1) (rangeClosed -1 +1)
+		|> filter (t -> at1 t != +0 || at2 t != +0)
+		|> List.filterMap (getPos pos >> Optional.map (isRollAtPos lines) >> Optional.filter id)
+		|> List.size
+		|> flip (<) 4
 
 sparseCount : [[Boolean]] -> Nat
 sparseCount lines =

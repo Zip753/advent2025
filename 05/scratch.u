@@ -1,0 +1,103 @@
+test> unifyRanges.tests.overlapping = test.verify do
+  input = [(1, 3), (2, 4)]
+  ensureEqual (unifyRanges input) [(1, 4)]
+
+
+test> unifyRanges.tests.disjoint = test.verify do
+  input = [(1, 2), (3, 4)]
+  ensureEqual (unifyRanges input) input
+
+
+extractPair : [Optional Nat] ->{Exception} (Nat, Nat)
+extractPair = cases
+  [Some a, Some b] -> (a, b)
+  l                -> Exception.raise (failure "not a pair of numbers" l)
+
+
+unifyRanges : [(Nat, Nat)] -> [(Nat, Nat)]
+unifyRanges ranges =
+  use List :+
+  use Nat < >=
+  acc : [(Nat, Nat)] -> (Nat, Nat) -> [(Nat, Nat)]
+  acc state range =
+    (from, to) = range
+    match state with
+      head :+ (prevFrom, prevTo) 
+        | prevTo < from  -> state :+ range
+        | prevTo >= from -> head :+ (prevFrom, Nat.max prevTo to)
+      _                          -> [range]
+  List.foldLeft acc [] ranges
+
+
+countTotalIds : [(Nat, Nat)] -> Nat
+countTotalIds ranges =
+  use Nat + -
+  ranges
+    |> List.sort
+    |> unifyRanges
+    |> List.map (x -> at2 x - at1 x + 1)
+    |> Nat.sum
+
+
+solve2 : '{IO, Exception} Nat
+solve2 =
+  do
+    use List map
+    use Pattern capture
+    use patterns number
+    lines = readFileUtf8 (FilePath "input.txt")
+    splits = splitOnPattern (literal "\n\n") lines
+    rangesText = match splits with
+      [ranges, _] -> ranges
+      s           -> Exception.raise (failure "malformed input" s)
+    ranges =
+      splitOnNewline rangesText
+        |> map
+          (captures
+            (Pattern.join [capture number, literal "-", capture number])
+            >> map Nat.fromText
+            >> extractPair)
+    countTotalIds ranges
+
+
+inRange : (Nat, Nat) -> Nat -> Boolean
+inRange range n =
+  use Nat <= >=
+  (from, to) = range
+  n >= from && n <= to
+
+
+countMatchingQueries : [(Nat, Nat)] -> [Nat] -> Nat
+countMatchingQueries ranges queries =
+  queries
+    |> List.filter (flip inRange >> flip List.find ranges >> isSome)
+    |> List.size
+
+
+solve1 : '{IO, Exception} Nat
+solve1 =
+  do
+    use List map
+    use Nat fromText
+    use Pattern capture
+    use patterns number
+    lines = readFileUtf8 (FilePath "input.txt")
+    splits = splitOnPattern (literal "\n\n") lines
+    (rangesText, queriesText) =
+      match splits with
+        [ranges, queries] -> (ranges, queries)
+        s                 -> Exception.raise (failure "malformed input" s)
+    ranges =
+      splitOnNewline rangesText
+        |> map
+          (captures
+            (Pattern.join [capture number, literal "-", capture number])
+            >> map fromText
+            >> extractPair)
+    queries =
+      splitOnNewline queriesText
+        |> List.filter (x -> Boolean.not (Text.isEmpty x))
+        |> map (fromText >> Optional.getOrBug "query is not a number")
+    countMatchingQueries ranges queries
+
+

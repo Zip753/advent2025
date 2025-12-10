@@ -4,6 +4,9 @@ Decided to go for Rust - things are getting serious and I didn't have that much 
 
 Despite me having not that much experience actually writing Rust, I felt the most at home this time, it was just so natural and refreshing. Later, I had some shower thoughts about how I enjoy Rust's expressiveness and how I think I value this quite a bit in languages, which is something that also holds true for the languages I've used for this AoC so far.
 
+> [!NOTE] Disclaimer
+> I should probably explain that I've used Claude Code very sparingly and mostly in very conservative discussion capacity. I also used it as a supercharged code editing tool - it helped me scaffold a thing or two, and also add cool things like ascii art for tests, which I find immensely cool, and helpful too :) So maybe it helped me out just a tiny bit with the solution, but like 5% of it. I also didn't want to get stuck because of not knowing some geometrical algorithms, but it didn't even come to that, as I came up with the solution idea before Claude managed to suggest other options (raycasting, which I didn't really fully understand and decided to proceed with my own solution).
+
 ## Part 1
 
 This was pure brute force and setting up the stage. Just check all pairs of points and get the max by area, done.
